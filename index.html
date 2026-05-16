@@ -12,6 +12,7 @@
         /* 공식 강조 섹션 */
         .formula-highlight { background: #222; border: 1px solid #0f0; padding: 15px; border-radius: 10px; margin-bottom: 25px; text-align: center; }
         .formula-text { font-size: 1rem; color: #0f0; font-weight: bold; word-break: keep-all; }
+        .logic-hint { font-size: 0.85rem; color: #aaa; margin-top: 8px; }
 
         .input-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; font-size: 0.95rem; font-weight: bold; color: #fff; }
@@ -29,7 +30,7 @@
         <h2>병뚜껑 밀기 점수 계산기</h2>
         
         <div class="formula-highlight">
-            <div class="formula-text">최종 점수 = 기본점수 + (기본점수×배율) - (기본점수×(배율/2)×실수)</div>
+            <div class="formula-text">최종 점수 = 기본점수 + (기본점수×배율) - (기본점수×(배율/2.5)×실수)</div>
         </div>
 
         <div class="input-group">
@@ -51,7 +52,7 @@
         </div>
 
         <div class="input-group">
-            <label>3. 실수 (X친 컵에 들어간 횟수)</label>
+            <label>3. 작전 실수 (X친 컵에 들어간 횟수)</label>
             <input type="number" id="miss" value="0" inputmode="numeric">
         </div>
 
@@ -67,7 +68,8 @@
             const r = parseFloat(document.getElementById('ratio').value);
             const n = parseInt(document.getElementById('miss').value) || 0;
 
-            const total = s + (s * r) - (s * (r/2) * n);
+            // 밸런스 패치: 감점 분모를 2에서 2.5로 상향 조정
+            const total = s + (s * r) - (s * (r / 2.5) * n);
             
             const res = document.getElementById('result');
             res.innerText = total.toFixed(3) + ' 점';
