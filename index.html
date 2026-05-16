@@ -3,93 +3,309 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>병뚜껑 밀기 점수 계산기</title>
+    <title>작전본부 통합 점수 계산기</title>
     <style>
-        body { background-color: #000; color: #fff; font-family: sans-serif; padding: 20px; line-height: 1.5; }
-        .box { border: 2px solid #fff; padding: 20px; border-radius: 15px; max-width: 450px; margin: 0 auto; }
-        h2 { text-align: center; margin-top: 0; letter-spacing: 2px; border-bottom: 2px solid #fff; padding-bottom: 10px; }
+        body { background-color: #000; color: #fff; font-family: sans-serif; padding: 15px; line-height: 1.4; }
+        .box { border: 2px solid #fff; padding: 15px; border-radius: 15px; max-width: 480px; margin: 0 auto; }
+        h2 { text-align: center; margin-top: 0; letter-spacing: 2px; border-bottom: 2px solid #fff; padding-bottom: 8px; font-size: 1.4rem; }
         
-        /* 공식 강조 섹션 */
-        .formula-highlight { background: #222; border: 1px solid #0f0; padding: 15px; border-radius: 10px; margin-bottom: 25px; text-align: center; }
-        .formula-text { font-size: 1rem; color: #0f0; font-weight: bold; word-break: keep-all; }
-        .logic-hint { font-size: 0.85rem; color: #aaa; margin-top: 8px; }
+        .game-section { background: #111; border: 1px solid #333; padding: 12px; border-radius: 10px; margin-bottom: 15px; }
+        .game-title { font-size: 1rem; font-weight: bold; color: #0f0; margin-bottom: 10px; border-left: 3px solid #0f0; padding-left: 8px; }
+        
+        .grid-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .input-group { margin-bottom: 8px; }
+        .input-group.full { grid-column: span 2; }
+        
+        label { display: block; margin-bottom: 4px; font-size: 0.85rem; color: #ccc; }
+        input, select { width: 100%; padding: 10px; background: #000; border: 1px solid #555; color: #fff; font-size: 1rem; border-radius: 6px; box-sizing: border-box; }
+        input:focus, select:focus { border-color: #0f0; outline: none; }
+        
+        .con-score { font-size: 0.85rem; color: #aaa; text-align: right; margin-top: 4px; font-weight: bold; }
+        .con-score span { color: #0f0; }
 
-        .input-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-size: 0.95rem; font-weight: bold; color: #fff; }
-        input, select { width: 100%; padding: 15px; background: #111; border: 1px solid #fff; color: #fff; font-size: 1.1rem; border-radius: 8px; box-sizing: border-box; }
+        /* 버튼 인터페이스 */
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        button { width: 100%; padding: 12px; font-weight: bold; font-size: 1rem; border-radius: 6px; cursor: pointer; border: none; }
+        .btn-calc { background: #fff; color: #000; grid-column: span 2; padding: 15px; font-size: 1.1rem; }
+        .btn-save { background: #0f0; color: #000; }
+        .btn-reset { background: #333; color: #fff; }
+        .btn-excel { background: #1f7246; color: #fff; grid-column: span 2; margin-top: 5px; }
+        .btn-danger { background: #441111; color: #ff9999; grid-column: span 2; margin-top: 5px; font-size: 0.9rem; padding: 8px; border: 1px solid #662222; }
         
-        button { width: 100%; padding: 18px; background: #fff; color: #000; border: none; font-weight: bold; font-size: 1.2rem; margin-top: 10px; border-radius: 8px; cursor: pointer; }
-        .reset { background: #333; color: #fff; margin-top: 10px; font-size: 1rem; }
+        /* 최종 결과 섹션 */
+        .result-section { background: #222; border: 2px solid #0f0; padding: 15px; border-radius: 10px; margin-top: 20px; text-align: center; }
+        .result-title { font-size: 1rem; color: #0f0; font-weight: bold; margin-bottom: 5px; }
+        #total-result { font-size: 2.2rem; font-weight: bold; color: #fff; text-shadow: 0 0 10px rgba(0,255,0,0.3); }
         
-        #result { margin-top: 25px; font-size: 2rem; text-align: center; font-weight: bold; min-height: 50px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-        .danger { color: #f00; text-shadow: 0 0 10px rgba(255,0,0,0.5); border: 2px solid #f00; padding: 10px; }
+        /* 리더보드 스크롤 컨테이너 추가 */
+        .leaderboard { margin-top: 25px; border-top: 1px solid #444; padding-top: 15px; }
+        .lb-title { font-size: 1.1rem; font-weight: bold; color: #0f0; margin-bottom: 10px; text-align: center; }
+        .table-wrapper { max-height: 220px; overflow-y: auto; border: 1px solid #333; border-radius: 6px; }
+        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 0.9rem; background: #0a0a0a; }
+        th, td { border: 1px solid #333; padding: 10px; }
+        th { background: #222; color: #0f0; position: sticky; top: 0; z-index: 1; }
+        
+        .btn-del { background: none; color: #ff4444; padding: 2px 6px; font-size: 0.85rem; border: 1px solid #ff4444; border-radius: 4px; width: auto; display: inline-block; }
+        .btn-del:hover { background: #ff4444; color: #000; }
+        .danger-text { color: #f00 !important; }
     </style>
 </head>
 <body>
     <div class="box">
-        <h2>병뚜껑 밀기 점수 계산기</h2>
+        <h2>통합 점수 계산기</h2>
         
-        <div class="formula-highlight">
-            <div class="formula-text">최종 점수 = 기본점수 + (기본점수×배율) - (기본점수×(배율/2.5)×실수)</div>
+        <div class="game-section" style="border-color: #0f0;">
+            <div class="input-group full">
+                <label style="color: #0f0; font-weight: bold;">👤 참가자 이름 / 닉네임</label>
+                <input type="text" id="player-name" placeholder="기록을 저장할 이름을 입력하세요">
+            </div>
+        </div>
+        
+        <div class="game-section">
+            <div class="game-title">📊 키링 해체</div>
+            <div class="grid-inputs">
+                <div class="input-group">
+                    <label>푼 키링 개수</label>
+                    <input type="number" id="g1-solved" placeholder="0" inputmode="numeric">
+                </div>
+                <div class="input-group">
+                    <label>남은 시간 (초)</label>
+                    <input type="number" id="g1-time" placeholder="0" inputmode="numeric">
+                </div>
+            </div>
+            <div class="con-score">환산 점수: <span id="g1-converted">0.000</span> / 100 점</div>
         </div>
 
-        <div class="input-group">
-            <label>1. 기본 점수 (성공한 컵 합계 점수)</label>
-            <input type="number" id="score" placeholder="0" inputmode="numeric">
+        <div class="game-section">
+            <div class="game-title">⚡ 펜라이트 흔들기</div>
+            <div class="input-group full">
+                <label>양손 합산 총 횟수</label>
+                <input type="number" id="g2-count" placeholder="0" inputmode="numeric">
+            </div>
+            <div class="con-score">환산 점수: <span id="g2-converted">0.000</span> / 100 점</div>
         </div>
 
-        <div class="input-group">
-            <label>2. 보너스 배율 (X친 컵 개수)</label>
-            <select id="ratio">
-                <option value="0">0개 (보너스 없음)</option>
-                <option value="0.25">1개 (+25%)</option>
-                <option value="0.5">2개 (+50%)</option>
-                <option value="1.0">3개 (+100%)</option>
-                <option value="1.5">4개 (+150%)</option>
-                <option value="2.0">5개 (+200%)</option>
-                <option value="3.0">6개 (+300%)</option>
-            </select>
+        <div class="game-section">
+            <div class="game-title">🎯 병뚜껑 밀기</div>
+            <div class="grid-inputs">
+                <div class="input-group">
+                    <label>기본 점수 (컵 합계)</label>
+                    <input type="number" id="g3-score" placeholder="0" inputmode="numeric">
+                </div>
+                <div class="input-group">
+                    <label>보너스 배율 (X친 컵)</label>
+                    <select id="g3-ratio">
+                        <option value="0">0개 (보너스 없음)</option>
+                        <option value="0.25">1개 (+25%)</option>
+                        <option value="0.5">2개 (+50%)</option>
+                        <option value="1.0">3개 (+100%)</option>
+                        <option value="1.5">4개 (+150%)</option>
+                        <option value="2.0">5개 (+200%)</option>
+                        <option value="3.0">6개 (+300%)</option>
+                    </select>
+                </div>
+                <div class="input-group full">
+                    <label>실수 (X친 컵에 들어간 횟수)</label>
+                    <input type="number" id="g3-miss" value="0" inputmode="numeric">
+                </div>
+            </div>
+            <div class="con-score">환산 점수: <span id="g3-converted">0.000</span> / 100 점</div>
         </div>
 
-        <div class="input-group">
-            <label>3. 실수 (X친 컵에 들어간 횟수)</label>
-            <input type="number" id="miss" value="0" inputmode="numeric">
+        <div class="btn-group">
+            <button class="btn-calc" onclick="calculateAll()">1. 통합 점수 산출</button>
+            <button class="btn-save" onclick="saveRecord()">2. 현재 기록 저장</button>
+            <button class="btn-reset" onclick="resetAll()">입력 초기화</button>
+            <button class="btn-excel" onclick="exportToCSV()">📊 누적 데이터 엑셀 다운로드</button>
+            <button class="btn-danger" onclick="clearAllRecords()">⚠️ 전체 데이터 공장초기화</button>
         </div>
 
-        <button onclick="calc()">최종 점수 산출</button>
-        <button class="reset" onclick="reset()">초기화</button>
+        <div class="result-section">
+            <div class="result-title">🏆 종합 랭킹 점수 🏆</div>
+            <div id="total-result">0.000 / 300 점</div>
+        </div>
 
-        <div id="result"></div>
+        <div class="leaderboard">
+            <div class="lb-title">🎖️ 실시간전체 랭킹 명단</div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 20%;">순위</th>
+                            <th style="width: 40%;">이름</th>
+                            <th style="width: 25%;">점수</th>
+                            <th style="width: 15%;">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lb-body">
+                        <tr><td colspan="4" style="color:#666;">등록된 기록이 없습니다.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <script>
-        function calc() {
-            const s = parseFloat(document.getElementById('score').value) || 0;
-            const r = parseFloat(document.getElementById('ratio').value);
-            const n = parseInt(document.getElementById('miss').value) || 0;
+        let currentScores = { g1: 0, g2: 0, g3: 0, total: 0 };
 
-            // 밸런스 패치: 감점 분모를 2에서 2.5로 상향 조정
-            const total = s + (s * r) - (s * (r / 2.5) * n);
+        window.onload = function() {
+            updateLeaderboardDisplay();
+        };
+
+        function calculateAll() {
+            const g1Solved = parseFloat(document.getElementById('g1-solved').value) || 0;
+            const g1Time = parseFloat(document.getElementById('g1-time').value) || 0;
+            const g1Raw = g1Solved + g1Time;
+            let g1Converted = (g1Raw / 35) * 100;
+            g1Converted = Math.max(0, Math.min(100, g1Converted));
+            document.getElementById('g1-converted').innerText = g1Converted.toFixed(3);
+
+            const g2Count = parseFloat(document.getElementById('g2-count').value) || 0;
+            let g2Converted = (g2Count / 400) * 100;
+            g2Converted = Math.max(0, Math.min(100, g2Converted));
+            document.getElementById('g2-converted').innerText = g2Converted.toFixed(3);
+
+            const g3S = parseFloat(document.getElementById('g3-score').value) || 0;
+            const g3R = parseFloat(document.getElementById('g3-ratio').value);
+            const g3N = parseInt(document.getElementById('g3-miss').value) || 0;
+            const g3Raw = g3S + (g3S * g3R) - (g3S * (g3R / 2.5) * g3N);
             
-            const res = document.getElementById('result');
-            res.innerText = total.toFixed(3) + ' 점';
+            let g3Converted = Math.pow(Math.max(0, g3Raw) / 200, 0.6) * 100;
+            const g3ScoreDisplay = document.getElementById('g3-converted');
+            if (g3Raw < 0) g3ScoreDisplay.classList.add('danger-text');
+            else g3ScoreDisplay.classList.remove('danger-text');
             
-            if (total < 0) {
-                res.classList.add('danger');
-            } else {
-                res.classList.remove('danger');
-                res.style.border = "none"; 
-            }
+            g3Converted = Math.max(0, Math.min(100, g3Converted));
+            g3ScoreDisplay.innerText = g3Converted.toFixed(3);
+
+            const totalScore = g1Converted + g2Converted + g3Converted;
+            document.getElementById('total-result').innerText = totalScore.toFixed(3) + ' / 300 점';
+
+            currentScores = { g1: g1Converted, g2: g2Converted, g3: g3Converted, total: totalScore };
         }
 
-        function reset() {
-            document.getElementById('score').value = '';
-            document.getElementById('ratio').value = '0';
-            document.getElementById('miss').value = '0';
-            const res = document.getElementById('result');
-            res.innerText = '';
-            res.classList.remove('danger');
-            res.style.border = "none";
+        function saveRecord() {
+            const nameInput = document.getElementById('player-name').value.trim();
+            if (!nameInput) {
+                alert('참가자의 이름을 입력해 주세요!');
+                return;
+            }
+            if (currentScores.total === 0) {
+                alert('먼저 1. [통합 점수 산출] 버튼을 눌러 점수를 계산해 주세요.');
+                return;
+            }
+
+            let records = JSON.parse(localStorage.getItem('festival_records')) || [];
+            
+            // 데이터 구분을 위한 고유 ID(타임스탬프) 생성 기능 추가
+            const newRecord = {
+                id: Date.now(),
+                name: nameInput,
+                keyring: currentScores.g1.toFixed(3),
+                manboki: currentScores.g2.toFixed(3),
+                bottlecap: currentScores.g3.toFixed(3),
+                total: currentScores.total.toFixed(3),
+                date: new Date().toLocaleString('ko-KR')
+            };
+
+            records.push(newRecord);
+            localStorage.setItem('festival_records', JSON.stringify(records));
+            
+            alert(`${nameInput} 요원의 기록이 명예의 전당에 세이브되었습니다!`);
+            
+            updateLeaderboardDisplay();
+            resetAll();
+            document.getElementById('player-name').value = '';
+        }
+
+        function updateLeaderboardDisplay() {
+            let records = JSON.parse(localStorage.getItem('festival_records')) || [];
+            // 등수 정렬
+            records.sort((a, b) => parseFloat(b.total) - parseFloat(a.total));
+            
+            const tbody = document.getElementById('lb-body');
+            tbody.innerHTML = '';
+            
+            if (records.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="color:#666;">등록된 기록이 없습니다.</td></tr>`;
+                return;
+            }
+
+            // 오타 수정을 위해 상위 5명이 아닌 '전체 등록 데이터'를 순위별로 스크롤 뷰에 출력
+            records.forEach((record, idx) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-weight:bold; ${idx===0?'color:#ff0;':''}">${idx+1}위</td>
+                    <td>${record.name}</td>
+                    <td style="font-weight:bold; color:#0f0;">${record.total} 점</td>
+                    <td><button class="btn-del" onclick="deleteRecord(${record.id}, '${record.name}')">삭제</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 특정 ID 매칭 데이터 타겟 삭제 함수
+        function deleteRecord(id, name) {
+            if (!confirm(`[경고] "${name}" 참가자의 기록을 정말 삭제하시겠습니까?`)) return;
+            
+            let records = JSON.parse(localStorage.getItem('festival_records')) || [];
+            // 해당 ID만 제외하고 필터링 (CS 스타일 데이터 정제)
+            records = records.filter(record => record.id !== id);
+            
+            localStorage.setItem('festival_records', JSON.stringify(records));
+            updateLeaderboardDisplay();
+        }
+
+        // 데이터 전체 포맷 함수
+        function clearAllRecords() {
+            if (!confirm("⚠️ [위험] 저장된 모든 참가자 데이터가 영구히 삭제됩니다.\n정말로 전체 초기화를 진행하시겠습니까?")) return;
+            if (!confirm("종료 후 복구가 불가능합니다. 엑셀 백업은 받아두셨나요? 정말 삭제합니까?")) return;
+            
+            localStorage.removeItem('festival_records');
+            alert("모든 데이터가 완벽하게 청소되었습니다.");
+            updateLeaderboardDisplay();
+        }
+
+        function exportToCSV() {
+            let records = JSON.parse(localStorage.getItem('festival_records')) || [];
+            if (records.length === 0) {
+                alert('다운로드할 데이터가 없습니다.');
+                return;
+            }
+
+            let csvContent = "\uFEFF"; 
+            csvContent += "순위,참가자 이름,키링 환산점(100),만보기 환산점(100),병뚜껑 환산점(100),최종 통합점수(300),등록 시간\n";
+
+            records.sort((a, b) => parseFloat(b.total) - parseFloat(a.total));
+            records.forEach((r, idx) => {
+                csvContent += `${idx+1},"${r.name}",${r.keyring},${r.manboki},${r.bottlecap},${r.total},"${r.date}"\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "작전본부_누적랭킹.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function resetAll() {
+            document.getElementById('g1-solved').value = '';
+            document.getElementById('g1-time').value = '';
+            document.getElementById('g2-count').value = '';
+            document.getElementById('g3-score').value = '';
+            document.getElementById('g3-ratio').value = '0';
+            document.getElementById('g3-miss').value = '0';
+
+            document.getElementById('g1-converted').innerText = '0.000';
+            document.getElementById('g2-converted').innerText = '0.000';
+            document.getElementById('g3-converted').innerText = '0.000';
+            document.getElementById('g3-converted').classList.remove('danger-text');
+            document.getElementById('total-result').innerText = '0.000 / 300 점';
+            currentScores = { g1: 0, g2: 0, g3: 0, total: 0 };
         }
     </script>
 </body>
