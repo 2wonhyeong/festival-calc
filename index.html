@@ -12,7 +12,6 @@
         /* 공식 강조 섹션 */
         .formula-highlight { background: #222; border: 1px solid #0f0; padding: 15px; border-radius: 10px; margin-bottom: 25px; text-align: center; }
         .formula-text { font-size: 1rem; color: #0f0; font-weight: bold; word-break: keep-all; }
-        .logic-hint { font-size: 0.85rem; color: #aaa; margin-top: 8px; }
 
         .input-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; font-size: 0.95rem; font-weight: bold; color: #fff; }
@@ -23,12 +22,6 @@
         
         #result { margin-top: 25px; font-size: 2rem; text-align: center; font-weight: bold; min-height: 50px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
         .danger { color: #f00; text-shadow: 0 0 10px rgba(255,0,0,0.5); border: 2px solid #f00; padding: 10px; }
-        
-        .info-section { margin-top: 30px; border-top: 1px solid #444; padding-top: 20px; }
-        .info-title { font-weight: bold; font-size: 1.1rem; display: block; margin-bottom: 15px; color: #fff; text-decoration: underline; }
-        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 0.85rem; }
-        th, td { border: 1px solid #444; padding: 10px; }
-        th { background: #222; }
     </style>
 </head>
 <body>
@@ -40,7 +33,7 @@
         </div>
 
         <div class="input-group">
-            <label>1. 기본 점수 (성공한 컵 합계)</label>
+            <label>1. 기본 점수 (성공한 컵 합계 점수)</label>
             <input type="number" id="score" placeholder="0" inputmode="numeric">
         </div>
 
@@ -58,7 +51,7 @@
         </div>
 
         <div class="input-group">
-            <label>3. 실수 (X친 컵에 들어간 공)</label>
+            <label>3. 실수 (X친 컵에 들어간 횟수)</label>
             <input type="number" id="miss" value="0" inputmode="numeric">
         </div>
 
