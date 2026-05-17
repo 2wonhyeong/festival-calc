@@ -3,14 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>작전본부 통합 점수 계산기</title>
+    <title>통합 점수 계산기</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
+        :root {
+            --point-color: #00d4ff; 
+            --bg-dark: #111;
+            --danger-color: #ff4444;
+        }
+
         body { background-color: #000; color: #fff; font-family: sans-serif; padding: 15px; line-height: 1.4; }
         .box { border: 2px solid #fff; padding: 15px; border-radius: 15px; max-width: 480px; margin: 0 auto; }
         h2 { text-align: center; margin-top: 0; letter-spacing: 2px; border-bottom: 2px solid #fff; padding-bottom: 8px; font-size: 1.4rem; }
         
-        .game-section { background: #111; border: 1px solid #333; padding: 12px; border-radius: 10px; margin-bottom: 15px; }
-        .game-title { font-size: 1rem; font-weight: bold; color: #0f0; margin-bottom: 10px; border-left: 3px solid #0f0; padding-left: 8px; }
+        .game-section { background: var(--bg-dark); border: 1px solid #333; padding: 12px; border-radius: 10px; margin-bottom: 15px; }
+        .game-title { font-size: 1rem; font-weight: bold; color: var(--point-color); margin-bottom: 10px; border-left: 3px solid var(--point-color); padding-left: 8px; }
         
         .grid-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .input-group { margin-bottom: 8px; }
@@ -18,51 +26,54 @@
         
         label { display: block; margin-bottom: 4px; font-size: 0.85rem; color: #ccc; }
         input, select { width: 100%; padding: 10px; background: #000; border: 1px solid #555; color: #fff; font-size: 1rem; border-radius: 6px; box-sizing: border-box; }
-        input:focus, select:focus { border-color: #0f0; outline: none; }
+        input:focus, select:focus { border-color: var(--point-color); outline: none; }
         
         .con-score { font-size: 0.85rem; color: #aaa; text-align: right; margin-top: 4px; font-weight: bold; }
-        .con-score span { color: #0f0; }
+        .con-score span { color: var(--point-color); }
 
-        /* 버튼 인터페이스 */
         .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         button { width: 100%; padding: 12px; font-weight: bold; font-size: 1rem; border-radius: 6px; cursor: pointer; border: none; }
         .btn-calc { background: #fff; color: #000; grid-column: span 2; padding: 15px; font-size: 1.1rem; }
-        .btn-save { background: #0f0; color: #000; }
+        .btn-save { background: var(--point-color); color: #000; }
         .btn-reset { background: #333; color: #fff; }
-        .btn-excel { background: #1f7246; color: #fff; grid-column: span 2; margin-top: 5px; }
-        .btn-danger { background: #441111; color: #ff9999; grid-column: span 2; margin-top: 5px; font-size: 0.9rem; padding: 8px; border: 1px solid #662222; }
+        .btn-excel { background: #1f4e72; color: #fff; grid-column: span 2; margin-top: 5px; }
+        .btn-danger { background: #331111; color: #ff9999; grid-column: span 2; margin-top: 5px; font-size: 0.85rem; padding: 8px; border: 1px solid #552222; }
         
-        /* 최종 결과 섹션 */
-        .result-section { background: #222; border: 2px solid #0f0; padding: 15px; border-radius: 10px; margin-top: 20px; text-align: center; }
-        .result-title { font-size: 1rem; color: #0f0; font-weight: bold; margin-bottom: 5px; }
-        #total-result { font-size: 2.2rem; font-weight: bold; color: #fff; text-shadow: 0 0 10px rgba(0,255,0,0.3); }
+        .result-section { background: #222; border: 2px solid var(--point-color); padding: 15px; border-radius: 10px; margin-top: 20px; text-align: center; }
+        .result-title { font-size: 1rem; color: var(--point-color); font-weight: bold; margin-bottom: 5px; }
+        #total-result { font-size: 2.2rem; font-weight: bold; color: #fff; text-shadow: 0 0 10px rgba(0,212,255,0.3); }
         
-        /* 리더보드 스크롤 컨테이너 추가 */
         .leaderboard { margin-top: 25px; border-top: 1px solid #444; padding-top: 15px; }
-        .lb-title { font-size: 1.1rem; font-weight: bold; color: #0f0; margin-bottom: 10px; text-align: center; }
-        .table-wrapper { max-height: 220px; overflow-y: auto; border: 1px solid #333; border-radius: 6px; }
+        .lb-title { font-size: 1.1rem; font-weight: bold; color: var(--point-color); margin-bottom: 10px; text-align: center; }
+        .table-wrapper { max-height: 250px; overflow-y: auto; border: 1px solid #333; border-radius: 6px; }
         table { width: 100%; border-collapse: collapse; text-align: center; font-size: 0.9rem; background: #0a0a0a; }
         th, td { border: 1px solid #333; padding: 10px; }
-        th { background: #222; color: #0f0; position: sticky; top: 0; z-index: 1; }
+        th { background: #222; color: var(--point-color); position: sticky; top: 0; z-index: 1; }
         
-        .btn-del { background: none; color: #ff4444; padding: 2px 6px; font-size: 0.85rem; border: 1px solid #ff4444; border-radius: 4px; width: auto; display: inline-block; }
-        .btn-del:hover { background: #ff4444; color: #000; }
-        .danger-text { color: #f00 !important; }
+        .btn-del { background: none; color: var(--danger-color); padding: 2px 6px; font-size: 0.85rem; border: 1px solid var(--danger-color); border-radius: 4px; width: auto; display: inline-block; }
+        .btn-del:hover { background: var(--danger-color); color: #000; }
+        .danger-text { color: var(--danger-color) !important; }
     </style>
 </head>
 <body>
     <div class="box">
         <h2>통합 점수 계산기</h2>
         
-        <div class="game-section" style="border-color: #0f0;">
-            <div class="input-group full">
-                <label style="color: #0f0; font-weight: bold;">👤 참가자 이름 / 전화번호</label>
-                <input type="text" id="player-name" placeholder="기록을 저장할 이름을 입력하세요">
+        <div class="game-section" style="border-color: var(--point-color);">
+            <div class="grid-inputs">
+                <div class="input-group">
+                    <label style="color: var(--point-color); font-weight: bold;">👤 참가자 이름 / 닉네임</label>
+                    <input type="text" id="player-name" placeholder="이름을 입력하세요">
+                </div>
+                <div class="input-group">
+                    <label style="color: var(--point-color); font-weight: bold;">📞 연락처 (상품 수령용)</label>
+                    <input type="tel" id="player-phone" placeholder="010-0000-0000" inputmode="tel">
+                </div>
             </div>
         </div>
         
         <div class="game-section">
-            <div class="game-title">📊 키링 해체</div>
+            <div class="game-title">📊 키링 해체 (만점: 35)</div>
             <div class="grid-inputs">
                 <div class="input-group">
                     <label>푼 키링 개수</label>
@@ -77,7 +88,7 @@
         </div>
 
         <div class="game-section">
-            <div class="game-title">⚡ 펜라이트 흔들기</div>
+            <div class="game-title">⚡ 펜라이트 흔들기 (만점: 600)</div>
             <div class="input-group full">
                 <label>양손 합산 총 횟수</label>
                 <input type="number" id="g2-count" placeholder="0" inputmode="numeric">
@@ -86,7 +97,7 @@
         </div>
 
         <div class="game-section">
-            <div class="game-title">🎯 병뚜껑 밀기</div>
+            <div class="game-title">🎯 병뚜껑 밀기 (만점: 200)</div>
             <div class="grid-inputs">
                 <div class="input-group">
                     <label>기본 점수 (컵 합계)</label>
@@ -116,8 +127,8 @@
             <button class="btn-calc" onclick="calculateAll()">1. 통합 점수 산출</button>
             <button class="btn-save" onclick="saveRecord()">2. 현재 기록 저장</button>
             <button class="btn-reset" onclick="resetAll()">입력 초기화</button>
-            <button class="btn-excel" onclick="exportToCSV()">📊 누적 데이터 엑셀 다운로드</button>
-            <button class="btn-danger" onclick="clearAllRecords()">⚠️ 전체 데이터 공장초기화</button>
+            <button class="btn-excel" onclick="exportToCSV()">📊 전체 데이터 엑셀 다운로드</button>
+            <button class="btn-danger" onclick="clearAllRecords()">전체 데이터 초기화</button>
         </div>
 
         <div class="result-section">
@@ -126,7 +137,7 @@
         </div>
 
         <div class="leaderboard">
-            <div class="lb-title">🎖️ 실시간전체 랭킹 명단</div>
+            <div class="lb-title">🎖️ 실시간 랭킹 리스트</div>
             <div class="table-wrapper">
                 <table>
                     <thead>
@@ -138,7 +149,7 @@
                         </tr>
                     </thead>
                     <tbody id="lb-body">
-                        <tr><td colspan="4" style="color:#666;">등록된 기록이 없습니다.</td></tr>
+                        <tr><td colspan="4" style="color:#666;">데이터를 불러오는 중...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -146,23 +157,49 @@
     </div>
 
     <script>
+        // -----------------------------------------------------------------
+        // 🛠️ [중요]여기에 본인의 Firebase 콘솔 설정값을 붙여넣으세요!
+        // -----------------------------------------------------------------
+        const firebaseConfig = {
+            apiKey: "AIzaSyCeGbGpbP1zJE85Gquzh1J9RBuhQ4x8Zdo",
+            authDomain: "festival-calc.firebaseapp.com",
+            projectId: "festival-calc",
+            storageBucket: "festival-calc.firebasestorage.app",
+            messagingSenderId: "204642777691",
+            appId: "1:204642777691:web:64c8d05087855903fb1d7e",
+            measurementId: "G-PJ3QQMVDXF"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const dbRef = firebase.database().ref('festival_records');
+
         let currentScores = { g1: 0, g2: 0, g3: 0, total: 0 };
+        let isCalculated = false;
+        let globalRecords = [];
 
         window.onload = function() {
-            updateLeaderboardDisplay();
+            dbRef.on('value', function(snapshot) {
+                const data = snapshot.val();
+                globalRecords = [];
+                if (data) {
+                    for (let key in data) {
+                        globalRecords.push({ id: key, ...data[key] });
+                    }
+                }
+                updateLeaderboardDisplay();
+            });
         };
 
         function calculateAll() {
             const g1Solved = parseFloat(document.getElementById('g1-solved').value) || 0;
             const g1Time = parseFloat(document.getElementById('g1-time').value) || 0;
             const g1Raw = g1Solved + g1Time;
-            let g1Converted = (g1Raw / 35) * 100;
-            g1Converted = Math.max(0, Math.min(100, g1Converted));
+            let g1Converted = Math.max(0, Math.min(100, (g1Raw / 35) * 100));
             document.getElementById('g1-converted').innerText = g1Converted.toFixed(3);
 
+            // --- 게임 2: 만보기 흔들기 계산 (600 만점 최종 반영) ---
             const g2Count = parseFloat(document.getElementById('g2-count').value) || 0;
-            let g2Converted = (g2Count / 400) * 100;
-            g2Converted = Math.max(0, Math.min(100, g2Converted));
+            let g2Converted = Math.max(0, Math.min(100, (g2Count / 600) * 100));
             document.getElementById('g2-converted').innerText = g2Converted.toFixed(3);
 
             const g3S = parseFloat(document.getElementById('g3-score').value) || 0;
@@ -182,25 +219,30 @@
             document.getElementById('total-result').innerText = totalScore.toFixed(3) + ' / 300 점';
 
             currentScores = { g1: g1Converted, g2: g2Converted, g3: g3Converted, total: totalScore };
+            isCalculated = true; 
         }
 
         function saveRecord() {
             const nameInput = document.getElementById('player-name').value.trim();
+            const phoneInput = document.getElementById('player-phone').value.trim();
+            
             if (!nameInput) {
                 alert('참가자의 이름을 입력해 주세요!');
                 return;
             }
-            if (currentScores.total === 0) {
+            if (!phoneInput) {
+                alert('상품 수령을 위한 연락처를 입력해 주세요!');
+                return;
+            }
+            if (!isCalculated) {
                 alert('먼저 1. [통합 점수 산출] 버튼을 눌러 점수를 계산해 주세요.');
                 return;
             }
 
-            let records = JSON.parse(localStorage.getItem('festival_records')) || [];
-            
-            // 데이터 구분을 위한 고유 ID(타임스탬프) 생성 기능 추가
+            // 클라우드 적재용 정밀 구조화 데이터 객체 생성
             const newRecord = {
-                id: Date.now(),
                 name: nameInput,
+                phone: phoneInput, // DB 및 엑셀에만 들어가는 프라이빗 연락처 파트
                 keyring: currentScores.g1.toFixed(3),
                 manboki: currentScores.g2.toFixed(3),
                 bottlecap: currentScores.g3.toFixed(3),
@@ -208,104 +250,81 @@
                 date: new Date().toLocaleString('ko-KR')
             };
 
-            records.push(newRecord);
-            localStorage.setItem('festival_records', JSON.stringify(records));
-            
-            alert(`${nameInput} 님의 기록이 명예의 전당에 세이브되었습니다!`);
-            
-            updateLeaderboardDisplay();
-            resetAll();
-            document.getElementById('player-name').value = '';
+            dbRef.push(newRecord, function(error) {
+                if(error) alert('저장 실패: ' + error);
+                else {
+                    alert(`${nameInput} 님의 기록이 저장되었습니다!`);
+                    resetAll();
+                }
+            });
         }
 
         function updateLeaderboardDisplay() {
-            let records = JSON.parse(localStorage.getItem('festival_records')) || [];
-            // 등수 정렬
-            records.sort((a, b) => parseFloat(b.total) - parseFloat(a.total));
-            
+            globalRecords.sort((a, b) => parseFloat(b.total) - parseFloat(a.total));
             const tbody = document.getElementById('lb-body');
             tbody.innerHTML = '';
             
-            if (records.length === 0) {
+            if (globalRecords.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="4" style="color:#666;">등록된 기록이 없습니다.</td></tr>`;
                 return;
             }
 
-            // 오타 수정을 위해 상위 5명이 아닌 '전체 등록 데이터'를 순위별로 스크롤 뷰에 출력
-            records.forEach((record, idx) => {
+            // 연락처(phone)를 렌더링 스코프에서 제외하여 현장 개인정보 완전 차단 가드
+            globalRecords.forEach((record, idx) => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td style="font-weight:bold; ${idx===0?'color:#ff0;':''}">${idx+1}위</td>
-                    <td>${record.name}</td>
-                    <td style="font-weight:bold; color:#0f0;">${record.total} 점</td>
-                    <td><button class="btn-del" onclick="deleteRecord(${record.id}, '${record.name}')">삭제</button></td>
+                    <td>${escapeHtml(record.name)}</td>
+                    <td style="font-weight:bold; color:var(--point-color);">${record.total} 점</td>
+                    <td><button class="btn-del" onclick="deleteRecord('${record.id}')">삭제</button></td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        // 특정 ID 매칭 데이터 타겟 삭제 함수
-        function deleteRecord(id, name) {
-            if (!confirm(`[경고] "${name}" 참가자의 기록을 정말 삭제하시겠습니까?`)) return;
-            
-            let records = JSON.parse(localStorage.getItem('festival_records')) || [];
-            // 해당 ID만 제외하고 필터링 (CS 스타일 데이터 정제)
-            records = records.filter(record => record.id !== id);
-            
-            localStorage.setItem('festival_records', JSON.stringify(records));
-            updateLeaderboardDisplay();
+        function deleteRecord(id) {
+            const target = globalRecords.find(r => r.id === id);
+            if (!target) return;
+            if (!confirm(`"${target.name}" 님의 기록을 삭제하시겠습니까?`)) return;
+            firebase.database().ref('festival_records/' + id).remove();
         }
 
-        // 데이터 전체 포맷 함수
         function clearAllRecords() {
-            if (!confirm("⚠️ [위험] 저장된 모든 참가자 데이터가 영구히 삭제됩니다.\n정말로 전체 초기화를 진행하시겠습니까?")) return;
-            if (!confirm("종료 후 복구가 불가능합니다. 엑셀 백업은 받아두셨나요? 정말 삭제합니까?")) return;
-            
-            localStorage.removeItem('festival_records');
-            alert("모든 데이터가 완벽하게 청소되었습니다.");
-            updateLeaderboardDisplay();
+            if (!confirm("⚠️ 저장된 모든 참가자 데이터가 영구히 삭제됩니다.\n정말로 초기화하시겠습니까?")) return;
+            dbRef.remove().then(() => alert("모든 데이터가 초기화되었습니다."));
         }
 
         function exportToCSV() {
-            let records = JSON.parse(localStorage.getItem('festival_records')) || [];
-            if (records.length === 0) {
-                alert('다운로드할 데이터가 없습니다.');
-                return;
-            }
-
-            let csvContent = "\uFEFF"; 
-            csvContent += "순위,참가자 이름,키링 환산점(100),만보기 환산점(100),병뚜껑 환산점(100),최종 통합점수(300),등록 시간\n";
-
-            records.sort((a, b) => parseFloat(b.total) - parseFloat(a.total));
-            records.forEach((r, idx) => {
-                csvContent += `${idx+1},"${r.name}",${r.keyring},${r.manboki},${r.bottlecap},${r.total},"${r.date}"\n`;
+            if (globalRecords.length === 0) { alert('다운로드할 데이터가 없습니다.'); return; }
+            // CSV 헤더 파트에 연락처 전용 열(Column) 전격 배치
+            let csv = "\uFEFF순위,참가자 이름,연락처,키링 환산점,만보기 환산점,병뚜껑 환산점,최종 통합점수,등록 시간\n";
+            globalRecords.sort((a, b) => parseFloat(b.total) - parseFloat(a.total));
+            globalRecords.forEach((r, idx) => {
+                // 연락처에 하이픈이나 공백이 있어도 포맷이 깨지지 않게 문자열 래핑 가드 처리
+                csv += `${idx+1},"${r.name}","${r.phone || ''}",${r.keyring},${r.manboki},${r.bottlecap},${r.total},"${r.date}"\n`;
             });
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", "작전본부_누적랭킹.csv");
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
+            link.href = URL.createObjectURL(blob);
+            link.download = "작전본부_최종랭킹_마스터데이터.csv";
             link.click();
-            document.body.removeChild(link);
         }
 
         function resetAll() {
-            document.getElementById('g1-solved').value = '';
-            document.getElementById('g1-time').value = '';
-            document.getElementById('g2-count').value = '';
-            document.getElementById('g3-score').value = '';
+            const ids = ['g1-solved','g1-time','g2-count','g3-score','g3-miss','player-name','player-phone'];
+            ids.forEach(id => document.getElementById(id).value = '');
             document.getElementById('g3-ratio').value = '0';
-            document.getElementById('g3-miss').value = '0';
-
-            document.getElementById('g1-converted').innerText = '0.000';
-            document.getElementById('g2-converted').innerText = '0.000';
-            document.getElementById('g3-converted').innerText = '0.000';
+            ['g1-converted','g2-converted','g3-converted'].forEach(id => document.getElementById(id).innerText = '0.000');
             document.getElementById('g3-converted').classList.remove('danger-text');
             document.getElementById('total-result').innerText = '0.000 / 300 점';
             currentScores = { g1: 0, g2: 0, g3: 0, total: 0 };
+            isCalculated = false;
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/[&<>"']/g, function(m) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+            });
         }
     </script>
 </body>
