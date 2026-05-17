@@ -11,6 +11,7 @@
             --point-color: #00d4ff; 
             --bg-dark: #111;
             --danger-color: #ff4444;
+            --success-color: #28a745;
         }
 
         body { background-color: #000; color: #fff; font-family: sans-serif; padding: 15px; line-height: 1.4; }
@@ -53,6 +54,16 @@
         .btn-del { background: none; color: var(--danger-color); padding: 2px 6px; font-size: 0.85rem; border: 1px solid var(--danger-color); border-radius: 4px; width: auto; display: inline-block; }
         .btn-del:hover { background: var(--danger-color); color: #000; }
         .danger-text { color: var(--danger-color) !important; }
+
+        /* 관리자 전용 데이터 복구 센터 스타일 */
+        details { margin-top: 30px; background: #0a0a0a; border: 1px dashed #555; border-radius: 8px; padding: 10px; }
+        summary { cursor: pointer; font-weight: bold; font-size: 0.9rem; color: #aaa; text-align: center; outline: none; }
+        summary:hover { color: var(--point-color); }
+        .admin-section { margin-top: 15px; padding-top: 10px; border-top: 1px solid #222; }
+        .admin-sub-title { font-size: 0.85rem; font-weight: bold; color: #ffcc00; margin-bottom: 8px; }
+        .btn-action { background: #222; color: #fff; border: 1px solid #555; padding: 4px 8px; font-size: 0.8rem; border-radius: 4px; font-weight: bold; }
+        .btn-action.restore { border-color: var(--success-color); color: #88ff88; }
+        .btn-action.restore:hover { background: var(--success-color); color: #fff; }
     </style>
 </head>
 <body>
@@ -73,7 +84,7 @@
         </div>
         
         <div class="game-section">
-            <div class="game-title">📊 키링 해체 (만점: 35)</div>
+            <div class="game-title">📊 키링 해체</div>
             <div class="grid-inputs">
                 <div class="input-group">
                     <label>푼 키링 개수</label>
@@ -88,7 +99,7 @@
         </div>
 
         <div class="game-section">
-            <div class="game-title">⚡ 펜라이트 흔들기 (만점: 600)</div>
+            <div class="game-title">⚡ 펜라이트 흔들기</div>
             <div class="input-group full">
                 <label>양손 합산 총 횟수</label>
                 <input type="number" id="g2-count" placeholder="0" inputmode="numeric">
@@ -97,7 +108,7 @@
         </div>
 
         <div class="game-section">
-            <div class="game-title">🎯 병뚜껑 밀기 (만점: 200)</div>
+            <div class="game-title">🎯 병뚜껑 밀기</div>
             <div class="grid-inputs">
                 <div class="input-group">
                     <label>기본 점수 (컵 합계)</label>
@@ -154,6 +165,38 @@
                 </table>
             </div>
         </div>
+
+        <details>
+            <summary>🛠️ 데이터 복구 센터 (클릭하여 확장)</summary>
+            
+            <div class="admin-section">
+                <div class="admin-sub-title">🗑️ 개별 삭제 내역 (휴지통)</div>
+                <div class="table-wrapper" style="max-height: 150px;">
+                    <table>
+                        <thead>
+                            <tr><th>이름</th><th>점수</th><th>복구</th></tr>
+                        </thead>
+                        <tbody id="trash-body">
+                            <tr><td colspan="3" style="color:#555;">휴지통이 비어있습니다.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="admin-section">
+                <div class="admin-sub-title">💾 전체 초기화 백업 로그 (롤백용)</div>
+                <div class="table-wrapper" style="max-height: 150px;">
+                    <table>
+                        <thead>
+                            <tr><th>백업 일시</th><th>작업</th></tr>
+                        </thead>
+                        <tbody id="backup-body">
+                            <tr><td colspan="2" style="color:#555;">백업 내역이 없습니다.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </details>
     </div>
 
     <script>
@@ -172,12 +215,15 @@
         
         firebase.initializeApp(firebaseConfig);
         const dbRef = firebase.database().ref('festival_records');
+        const trashRef = firebase.database().ref('trash_records');
+        const backupRef = firebase.database().ref('backups');
 
         let currentScores = { g1: 0, g2: 0, g3: 0, total: 0 };
         let isCalculated = false;
         let globalRecords = [];
 
         window.onload = function() {
+            // 1. 메인 데이터 실시간 구독
             dbRef.on('value', function(snapshot) {
                 const data = snapshot.val();
                 globalRecords = [];
@@ -188,6 +234,45 @@
                 }
                 updateLeaderboardDisplay();
             });
+
+            // 2. 휴지통 데이터 실시간 구독
+            trashRef.on('value', function(snapshot) {
+                const data = snapshot.val();
+                const tbody = document.getElementById('trash-body');
+                tbody.innerHTML = '';
+                if (!data) {
+                    tbody.innerHTML = `<tr><td colspan="3" style="color:#555;">휴지통이 비어있습니다.</td></tr>`;
+                    return;
+                }
+                for (let key in data) {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${escapeHtml(data[key].name)}</td>
+                        <td>${data[key].total} 점</td>
+                        <td><button class="btn-action restore" onclick="restoreRecord('${key}')">복구</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            });
+
+            // 3. 공장초기화 백업 데이터 실시간 구독
+            backupRef.on('value', function(snapshot) {
+                const data = snapshot.val();
+                const tbody = document.getElementById('backup-body');
+                tbody.innerHTML = '';
+                if (!data) {
+                    tbody.innerHTML = `<tr><td colspan="2" style="color:#555;">백업 내역이 없습니다.</td></tr>`;
+                    return;
+                }
+                for (let key in data) {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${data[key].date}</td>
+                        <td><button class="btn-action" onclick="rollbackBackup('${key}')">전체 복구</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            });
         };
 
         function calculateAll() {
@@ -197,7 +282,6 @@
             let g1Converted = Math.max(0, Math.min(100, (g1Raw / 35) * 100));
             document.getElementById('g1-converted').innerText = g1Converted.toFixed(3);
 
-            // --- 게임 2: 만보기 흔들기 계산 (600 만점 최종 반영) ---
             const g2Count = parseFloat(document.getElementById('g2-count').value) || 0;
             let g2Converted = Math.max(0, Math.min(100, (g2Count / 600) * 100));
             document.getElementById('g2-converted').innerText = g2Converted.toFixed(3);
@@ -219,30 +303,20 @@
             document.getElementById('total-result').innerText = totalScore.toFixed(3) + ' / 300 점';
 
             currentScores = { g1: g1Converted, g2: g2Converted, g3: g3Converted, total: totalScore };
-            isCalculated = true; 
+            isCalculated = true;
         }
 
         function saveRecord() {
             const nameInput = document.getElementById('player-name').value.trim();
             const phoneInput = document.getElementById('player-phone').value.trim();
             
-            if (!nameInput) {
-                alert('참가자의 이름을 입력해 주세요!');
-                return;
-            }
-            if (!phoneInput) {
-                alert('상품 수령을 위한 연락처를 입력해 주세요!');
-                return;
-            }
-            if (!isCalculated) {
-                alert('먼저 1. [통합 점수 산출] 버튼을 눌러 점수를 계산해 주세요.');
-                return;
-            }
+            if (!nameInput) { alert('참가자의 이름을 입력해 주세요!'); return; }
+            if (!phoneInput) { alert('상품 수령을 위한 연락처를 입력해 주세요!'); return; }
+            if (!isCalculated) { alert('먼저 1. [통합 점수 산출] 버튼을 눌러 점수를 계산해 주세요.'); return; }
 
-            // 클라우드 적재용 정밀 구조화 데이터 객체 생성
             const newRecord = {
                 name: nameInput,
-                phone: phoneInput, // DB 및 엑셀에만 들어가는 프라이빗 연락처 파트
+                phone: phoneInput,
                 keyring: currentScores.g1.toFixed(3),
                 manboki: currentScores.g2.toFixed(3),
                 bottlecap: currentScores.g3.toFixed(3),
@@ -269,7 +343,6 @@
                 return;
             }
 
-            // 연락처(phone)를 렌더링 스코프에서 제외하여 현장 개인정보 완전 차단 가드
             globalRecords.forEach((record, idx) => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -282,31 +355,72 @@
             });
         }
 
+        // 개별 기록 삭제 트래커 (휴지통 이동 연산)
         function deleteRecord(id) {
             const target = globalRecords.find(r => r.id === id);
             if (!target) return;
-            if (!confirm(`"${target.name}" 님의 기록을 삭제하시겠습니까?`)) return;
-            firebase.database().ref('festival_records/' + id).remove();
+            if (!confirm(`"${target.name}" 님의 기록을 삭제하시겠습니까?\n(삭제된 데이터는 하단 복구 센터에서 다시 살릴 수 있습니다.)`)) return;
+            
+            // 삭제하기 전에 trash_records 노드로 복사 후 원본 제거 (Soft Delete 기법)
+            trashRef.child(id).set(target, function(error) {
+                if(!error) dbRef.child(id).remove();
+            });
         }
 
+        // 개별 기록 복구 함수
+        function restoreRecord(id) {
+            trashRef.child(id).once('value').then(snapshot => {
+                const data = snapshot.val();
+                if (!data) return;
+                dbRef.child(id).set(data).then(() => {
+                    trashRef.child(id).remove();
+                    alert(`"${data.name}" 님의 기록이 메인 랭킹판으로 복구되었습니다.`);
+                });
+            });
+        }
+
+        // 데이터 원격 셧다운 및 스냅샷 자동 백업 엔진 고도화
         function clearAllRecords() {
+            if (globalRecords.length === 0) { alert('초기화할 데이터가 없습니다.'); return; }
             if (!confirm("⚠️ 저장된 모든 참가자 데이터가 영구히 삭제됩니다.\n정말로 초기화하시겠습니까?")) return;
-            dbRef.remove().then(() => alert("모든 데이터가 초기화되었습니다."));
+            
+            const backupId = Date.now();
+            const backupData = {};
+            globalRecords.forEach(r => { backupData[r.id] = r; });
+
+            // 삭제 치기 직전, 현재 스냅샷 데이터를 물리 백업 데이터 공간으로 이관
+            backupRef.child(backupId).set({
+                date: new Date().toLocaleString('ko-KR'),
+                data: backupData
+            }).then(() => {
+                dbRef.remove().then(() => alert("모든 데이터가 초기화되었습니다.\n(직전 데이터는 데이터 복구 센터에 자동 영구 백업되었습니다.)"));
+            });
+        }
+
+        // 전체 초기화 과거 시점 롤백 함수
+        function rollbackBackup(key) {
+            if (!confirm("선택한 시점의 백업 데이터로 전체 롤백하시겠습니까?\n(주의: 현재 실시간 메인 전광판 데이터 위에 덮어씌워집니다!)")) return;
+            
+            backupRef.child(key + '/data').once('value').then(snapshot => {
+                const data = snapshot.val();
+                if (!data) return;
+                dbRef.set(data).then(() => {
+                    alert("선택한 시점의 백업으로 랭킹 시스템이 성공적으로 롤백되었습니다.");
+                });
+            });
         }
 
         function exportToCSV() {
             if (globalRecords.length === 0) { alert('다운로드할 데이터가 없습니다.'); return; }
-            // CSV 헤더 파트에 연락처 전용 열(Column) 전격 배치
             let csv = "\uFEFF순위,참가자 이름,연락처,키링 환산점,만보기 환산점,병뚜껑 환산점,최종 통합점수,등록 시간\n";
             globalRecords.sort((a, b) => parseFloat(b.total) - parseFloat(a.total));
             globalRecords.forEach((r, idx) => {
-                // 연락처에 하이픈이나 공백이 있어도 포맷이 깨지지 않게 문자열 래핑 가드 처리
                 csv += `${idx+1},"${r.name}","${r.phone || ''}",${r.keyring},${r.manboki},${r.bottlecap},${r.total},"${r.date}"\n`;
             });
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = "작전본부_최종랭킹_마스터데이터.csv";
+            link.download = "작전본부_최종랭킹.csv";
             link.click();
         }
 
