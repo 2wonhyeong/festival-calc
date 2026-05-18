@@ -85,10 +85,10 @@
                     <input type="tel" id="player-phone" placeholder="010-0000-0000" inputmode="tel">
                 </div>
                 <div class="input-group full">
-                    <label style="color: var(--point-color); font-weight: bold;">🎯 시상 그룹 구분</label>
+                    <label style="color: var(--point-color); font-weight: bold;">🎯 시상 리그 그룹 구분</label>
                     <select id="player-category">
-                        <option value="일반인계">일반인계</option>
-                        <option value="오타쿠계">오타쿠계</option>
+                        <option value="일반인계">일반인계 (스타벅스 3만원권 경쟁 라인)</option>
+                        <option value="오타쿠계">오타쿠계 (하츠네 미쿠 피규어 경쟁 라인)</option>
                     </select>
                 </div>
             </div>
@@ -98,7 +98,7 @@
             <div class="game-title">📊 키링 해체</div>
             <div class="grid-inputs">
                 <div class="input-group">
-                    <label>푼 키링 개수</label>
+                    <label>푼 키링 개수 (최대 20)</label>
                     <input type="number" id="g1-solved" placeholder="0" inputmode="numeric">
                 </div>
                 <div class="input-group">
@@ -112,7 +112,7 @@
         <div class="game-section">
             <div class="game-title">⚡ 펜라이트 흔들기</div>
             <div class="input-group full">
-                <label>양손 합산 총 횟수</label>
+                <label>양손 합산 총 횟수 (200개 초과 시 보너스점수)</label>
                 <input type="number" id="g2-count" placeholder="0" inputmode="numeric">
             </div>
             <div class="con-score">환산 점수: <span id="g2-converted">0.000</span> / 100 점</div>
@@ -289,17 +289,30 @@
         };
 
         function calculateAll() {
+            // --- 게임 1: 키링 해체 수식 변경 (k=0.66 적용으로 10개=60점 정밀 튜닝) ---
             const g1Solved = parseFloat(document.getElementById('g1-solved').value) || 0;
             const g1Time = parseFloat(document.getElementById('g1-time').value) || 0;
-            const g1Raw = g1Solved + g1Time;
-            let g1Converted = Math.max(0, Math.min(100, (g1Raw / 35) * 100));
+            
+            let g1Converted = 0;
+            if (g1Solved > 0) {
+                g1Converted = Math.pow(Math.min(20, g1Solved) / 20, 0.66) * 95;
+            }
+            g1Converted += (Math.min(60, g1Time) / 60) * 5;
+            g1Converted = Math.max(0, Math.min(100, g1Converted));
             document.getElementById('g1-converted').innerText = g1Converted.toFixed(3);
 
-            // --- 게임 2: 만보기 흔들기 계산 (500점 만점 분모 적용 완료) ---
+            // --- 게임 2: 만보기 흔들기 (200개 한계돌파 보너스 유지) ---
             const g2Count = parseFloat(document.getElementById('g2-count').value) || 0;
-            let g2Converted = Math.max(0, Math.min(100, (g2Count / 300) * 100));
+            let g2Converted = 0;
+            if (g2Count <= 200) {
+                g2Converted = (g2Count / 200) * 100;
+            } else {
+                g2Converted = 100 + ((g2Count - 200) / 10);
+            }
+            g2Converted = Math.max(0, Math.min(110, g2Converted));
             document.getElementById('g2-converted').innerText = g2Converted.toFixed(3);
 
+            // --- 게임 3: 병뚜껑 밀기 계산 ---
             const g3S = parseFloat(document.getElementById('g3-score').value) || 0;
             const g3R = parseFloat(document.getElementById('g3-ratio').value);
             const g3N = parseInt(document.getElementById('g3-miss').value) || 0;
