@@ -46,6 +46,11 @@
         
         .leaderboard { margin-top: 25px; border-top: 1px solid #444; padding-top: 15px; }
         .lb-title { font-size: 1.1rem; font-weight: bold; color: var(--point-color); margin-bottom: 10px; text-align: center; }
+        
+        .tab-group { display: flex; gap: 5px; margin-bottom: 10px; }
+        .tab-btn { flex: 1; padding: 8px; background: #222; color: #ccc; font-size: 0.85rem; border: 1px solid #444; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .tab-btn.active { background: var(--point-color); color: #000; border-color: var(--point-color); }
+
         .table-wrapper { max-height: 250px; overflow-y: auto; border: 1px solid #333; border-radius: 6px; }
         table { width: 100%; border-collapse: collapse; text-align: center; font-size: 0.9rem; background: #0a0a0a; }
         th, td { border: 1px solid #333; padding: 10px; }
@@ -55,7 +60,6 @@
         .btn-del:hover { background: var(--danger-color); color: #000; }
         .danger-text { color: var(--danger-color) !important; }
 
-        /* 관리자 전용 데이터 복구 센터 스타일 */
         details { margin-top: 30px; background: #0a0a0a; border: 1px dashed #555; border-radius: 8px; padding: 10px; }
         summary { cursor: pointer; font-weight: bold; font-size: 0.9rem; color: #aaa; text-align: center; outline: none; }
         summary:hover { color: var(--point-color); }
@@ -79,6 +83,13 @@
                 <div class="input-group">
                     <label style="color: var(--point-color); font-weight: bold;">📞 연락처 (상품 수령용)</label>
                     <input type="tel" id="player-phone" placeholder="010-0000-0000" inputmode="tel">
+                </div>
+                <div class="input-group full">
+                    <label style="color: var(--point-color); font-weight: bold;">🎯 시상 리그 그룹 구분</label>
+                    <select id="player-category">
+                        <option value="일반인계">일반인계 (스타벅스 3만원권 경쟁 라인)</option>
+                        <option value="오타쿠계">오타쿠계 (하츠네 미쿠 피규어 경쟁 라인)</option>
+                    </select>
                 </div>
             </div>
         </div>
@@ -149,12 +160,19 @@
 
         <div class="leaderboard">
             <div class="lb-title">🎖️ 실시간 랭킹 리스트</div>
+            
+            <div class="tab-group">
+                <button class="tab-btn active" id="tab-all" onclick="filterLeaderboard('all')">전체 명단</button>
+                <button class="tab-btn" id="tab-general" onclick="filterLeaderboard('일반인계')">☕ 일반인계 (스벅)</button>
+                <button class="tab-btn" id="tab-otaku" onclick="filterLeaderboard('오타쿠계')">💚 오타쿠계 (미쿠)</button>
+            </div>
+
             <div class="table-wrapper">
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 20%;">순위</th>
-                            <th style="width: 40%;">이름</th>
+                            <th style="width: 15%;">순위</th>
+                            <th style="width: 45%;">이름</th>
                             <th style="width: 25%;">점수</th>
                             <th style="width: 15%;">관리</th>
                         </tr>
@@ -200,9 +218,6 @@
     </div>
 
     <script>
-        // -----------------------------------------------------------------
-        // 🛠️ [중요]여기에 본인의 Firebase 콘솔 설정값을 붙여넣으세요!
-        // -----------------------------------------------------------------
         const firebaseConfig = {
             apiKey: "AIzaSyCeGbGpbP1zJE85Gquzh1J9RBuhQ4x8Zdo",
             authDomain: "festival-calc.firebaseapp.com",
@@ -221,9 +236,9 @@
         let currentScores = { g1: 0, g2: 0, g3: 0, total: 0 };
         let isCalculated = false;
         let globalRecords = [];
+        let currentTab = 'all';
 
         window.onload = function() {
-            // 1. 메인 데이터 실시간 구독
             dbRef.on('value', function(snapshot) {
                 const data = snapshot.val();
                 globalRecords = [];
@@ -235,7 +250,6 @@
                 updateLeaderboardDisplay();
             });
 
-            // 2. 휴지통 데이터 실시간 구독
             trashRef.on('value', function(snapshot) {
                 const data = snapshot.val();
                 const tbody = document.getElementById('trash-body');
@@ -247,7 +261,7 @@
                 for (let key in data) {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${escapeHtml(data[key].name)}</td>
+                        <td>${escapeHtml(data[key].name)} <span style="font-size:0.75rem; color:#aaa;">(${data[key].category || '일반인계'})</span></td>
                         <td>${data[key].total} 점</td>
                         <td><button class="btn-action restore" onclick="restoreRecord('${key}')">복구</button></td>
                     `;
@@ -255,7 +269,6 @@
                 }
             });
 
-            // 3. 공장초기화 백업 데이터 실시간 구독
             backupRef.on('value', function(snapshot) {
                 const data = snapshot.val();
                 const tbody = document.getElementById('backup-body');
@@ -282,6 +295,7 @@
             let g1Converted = Math.max(0, Math.min(100, (g1Raw / 35) * 100));
             document.getElementById('g1-converted').innerText = g1Converted.toFixed(3);
 
+            // --- 게임 2: 만보기 흔들기 계산 (500점 만점 분모 적용 완료) ---
             const g2Count = parseFloat(document.getElementById('g2-count').value) || 0;
             let g2Converted = Math.max(0, Math.min(100, (g2Count / 500) * 100));
             document.getElementById('g2-converted').innerText = g2Converted.toFixed(3);
@@ -309,6 +323,7 @@
         function saveRecord() {
             const nameInput = document.getElementById('player-name').value.trim();
             const phoneInput = document.getElementById('player-phone').value.trim();
+            const categoryInput = document.getElementById('player-category').value;
             
             if (!nameInput) { alert('참가자의 이름을 입력해 주세요!'); return; }
             if (!phoneInput) { alert('상품 수령을 위한 연락처를 입력해 주세요!'); return; }
@@ -317,6 +332,7 @@
             const newRecord = {
                 name: nameInput,
                 phone: phoneInput,
+                category: categoryInput,
                 keyring: currentScores.g1.toFixed(3),
                 manboki: currentScores.g2.toFixed(3),
                 bottlecap: currentScores.g3.toFixed(3),
@@ -327,10 +343,19 @@
             dbRef.push(newRecord, function(error) {
                 if(error) alert('저장 실패: ' + error);
                 else {
-                    alert(`${nameInput} 님의 기록이 저장되었습니다!`);
+                    alert(`${nameInput} 님의 기록이 [${categoryInput}]에 정상 저장되었습니다!`);
                     resetAll();
                 }
             });
+        }
+
+        function filterLeaderboard(tabName) {
+            currentTab = tabName;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            if(tabName === 'all') document.getElementById('tab-all').classList.add('active');
+            if(tabName === '일반인계') document.getElementById('tab-general').classList.add('active');
+            if(tabName === '오타쿠계') document.getElementById('tab-otaku').classList.add('active');
+            updateLeaderboardDisplay();
         }
 
         function updateLeaderboardDisplay() {
@@ -338,16 +363,25 @@
             const tbody = document.getElementById('lb-body');
             tbody.innerHTML = '';
             
-            if (globalRecords.length === 0) {
+            let displayRecords = [];
+            if (currentTab === 'all') {
+                displayRecords = globalRecords;
+            } else {
+                displayRecords = globalRecords.filter(r => r.category === currentTab);
+            }
+            
+            if (displayRecords.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="4" style="color:#666;">등록된 기록이 없습니다.</td></tr>`;
                 return;
             }
 
-            globalRecords.forEach((record, idx) => {
+            displayRecords.forEach((record, idx) => {
                 const tr = document.createElement('tr');
+                const categoryTag = currentTab === 'all' ? ` <span style="font-size:0.75rem; color:#888;">(${record.category || '일반인계'})</span>` : '';
+                
                 tr.innerHTML = `
                     <td style="font-weight:bold; ${idx===0?'color:#ff0;':''}">${idx+1}위</td>
-                    <td>${escapeHtml(record.name)}</td>
+                    <td>${escapeHtml(record.name)}${categoryTag}</td>
                     <td style="font-weight:bold; color:var(--point-color);">${record.total} 점</td>
                     <td><button class="btn-del" onclick="deleteRecord('${record.id}')">삭제</button></td>
                 `;
@@ -355,19 +389,16 @@
             });
         }
 
-        // 개별 기록 삭제 트래커 (휴지통 이동 연산)
         function deleteRecord(id) {
             const target = globalRecords.find(r => r.id === id);
             if (!target) return;
             if (!confirm(`"${target.name}" 님의 기록을 삭제하시겠습니까?\n(삭제된 데이터는 하단 복구 센터에서 다시 살릴 수 있습니다.)`)) return;
             
-            // 삭제하기 전에 trash_records 노드로 복사 후 원본 제거 (Soft Delete 기법)
             trashRef.child(id).set(target, function(error) {
                 if(!error) dbRef.child(id).remove();
             });
         }
 
-        // 개별 기록 복구 함수
         function restoreRecord(id) {
             trashRef.child(id).once('value').then(snapshot => {
                 const data = snapshot.val();
@@ -379,7 +410,6 @@
             });
         }
 
-        // 데이터 원격 셧다운 및 스냅샷 자동 백업 엔진 고도화
         function clearAllRecords() {
             if (globalRecords.length === 0) { alert('초기화할 데이터가 없습니다.'); return; }
             if (!confirm("⚠️ 저장된 모든 참가자 데이터가 영구히 삭제됩니다.\n정말로 초기화하시겠습니까?")) return;
@@ -388,7 +418,6 @@
             const backupData = {};
             globalRecords.forEach(r => { backupData[r.id] = r; });
 
-            // 삭제 치기 직전, 현재 스냅샷 데이터를 물리 백업 데이터 공간으로 이관
             backupRef.child(backupId).set({
                 date: new Date().toLocaleString('ko-KR'),
                 data: backupData
@@ -397,7 +426,6 @@
             });
         }
 
-        // 전체 초기화 과거 시점 롤백 함수
         function rollbackBackup(key) {
             if (!confirm("선택한 시점의 백업 데이터로 전체 롤백하시겠습니까?\n(주의: 현재 실시간 메인 전광판 데이터 위에 덮어씌워집니다!)")) return;
             
@@ -412,10 +440,10 @@
 
         function exportToCSV() {
             if (globalRecords.length === 0) { alert('다운로드할 데이터가 없습니다.'); return; }
-            let csv = "\uFEFF순위,참가자 이름,연락처,키링 환산점,만보기 환산점,병뚜껑 환산점,최종 통합점수,등록 시간\n";
+            let csv = "\uFEFF순위,리그 구분,참가자 이름,연락처,키링 환산점,만보기 환산점,병뚜껑 환산점,최종 통합점수,등록 시간\n";
             globalRecords.sort((a, b) => parseFloat(b.total) - parseFloat(a.total));
             globalRecords.forEach((r, idx) => {
-                csv += `${idx+1},"${r.name}","${r.phone || ''}",${r.keyring},${r.manboki},${r.bottlecap},${r.total},"${r.date}"\n`;
+                csv += `${idx+1},"${r.category || '일반인계'}","${r.name}","${r.phone || ''}",${r.keyring},${r.manboki},${r.bottlecap},${r.total},"${r.date}"\n`;
             });
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
@@ -427,6 +455,7 @@
         function resetAll() {
             const ids = ['g1-solved','g1-time','g2-count','g3-score','g3-miss','player-name','player-phone'];
             ids.forEach(id => document.getElementById(id).value = '');
+            document.getElementById('player-category').value = '일반인계';
             document.getElementById('g3-ratio').value = '0';
             ['g1-converted','g2-converted','g3-converted'].forEach(id => document.getElementById(id).innerText = '0.000');
             document.getElementById('g3-converted').classList.remove('danger-text');
